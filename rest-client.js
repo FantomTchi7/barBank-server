@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto')
 const mongoose = require('mongoose');
 const app = express();
 const port = 9000;
@@ -15,25 +16,10 @@ mongoose.connect('mongodb+srv://test:1234@cluster0.2zfhqac.mongodb.net/accounts-
     .catch(err => console.error('Could not connect to MongoDB...', err));
 
 const accountSchema = new mongoose.Schema({
-    username: {
-        type: String,
-        required: true,
-        minlength: 3,
-        maxlength: 50
-    },
-    email: {
-        type: String,
-        required: true,
-        minlength: 5,
-        maxlength: 255,
-        unique: true
-    },
-    password: {
-        type: String,
-        required: true,
-        minlength: 5,
-        maxlength: 1024
-    }
+    username: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    token: { type: String }
 });
 
 const Account = mongoose.model('Account', accountSchema);
@@ -103,6 +89,7 @@ app.post('/accounts', async (req, res) => {
 });
 
 app.post('/accounts/login', async (req, res) => {
+    // 1. Validate incoming data
     if (!req.body || !req.body.email || !req.body.password) {
         return res.status(400).send({ error: 'Email and password are required.' });
     }
@@ -110,26 +97,56 @@ app.post('/accounts/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
+        console.log(`Attempting login for email: ${email}`);
         const account = await Account.findOne({ email: email });
 
-        if (!account) {
+        if (!account || account.password !== password) {
+            console.warn(`Login failed for email: ${email}. Reason: Invalid credentials.`);
             return res.status(401).send({ error: 'Invalid email or password.' });
         }
 
-        const isMatch = (password === account.password);
+        console.log(`Credentials valid for: ${email}. Generating token.`);
+        account.token = crypto.randomBytes(32).toString('hex');
+        await account.save();
 
-        if (!isMatch) {
-            return res.status(401).send({ error: 'Invalid email or password.' });
+        console.log(`Token saved successfully for: ${email}`);
+
+        res.status(200).send({
+            _id: account._id,
+            username: account.username,
+            email: account.email,
+            token: account.token
+        });
+
+    } catch (error) {
+        console.error("FATAL LOGIN ERROR:", error);
+        res.status(500).send({ error: 'An internal server error occurred.' });
+    }
+});
+
+app.get('/user', async (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Token ')) {
+        return res.status(401).send({ error: 'Authorization header missing or malformed.' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const account = await Account.findOne({ token: token });
+
+        if (!account) {
+            return res.status(401).send({ error: 'Invalid token.' });
         }
 
         res.status(200).send({
             _id: account._id,
             username: account.username,
-            email: account.email
+            email: account.email,
+            token: account.token
         });
-
     } catch (error) {
-        console.error("Login error:", error);
         res.status(500).send({ error: 'An internal server error occurred.' });
     }
 });
