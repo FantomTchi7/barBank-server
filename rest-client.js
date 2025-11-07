@@ -15,6 +15,11 @@ mongoose.connect('mongodb+srv://test:1234@cluster0.2zfhqac.mongodb.net/accounts-
     .then(() => console.log('Connected to MongoDB...'))
     .catch(err => console.error('Could not connect to MongoDB...', err));
 
+const gameSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    price: { type: Number, required: true, default: 0 }
+});
+
 const accountSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
@@ -22,7 +27,58 @@ const accountSchema = new mongoose.Schema({
     token: { type: String }
 });
 
+const Game = mongoose.model('Game', gameSchema);
+
 const Account = mongoose.model('Account', accountSchema);
+
+app.get('/games', async (req, res) => {
+    try {
+        const games = await Game.find().sort({ name: 1 });
+        res.status(200).send(games);
+    } catch (error) {
+        res.status(500).send({ error: "An error occurred while fetching games." });
+    }
+});
+
+app.get('/games/:id', async (req, res) => {
+    try {
+        const game = await Game.findById(req.params.id);
+        if (!game) {
+            return res.status(404).send({ error: "Game not found" });
+        }
+        res.status(200).send(game);
+    } catch (error) {
+        res.status(500).send({ error: "An error occurred while fetching the game." });
+    }
+});
+
+app.post('/games', async (req, res) => {
+    if (!req.body.name || req.body.price === undefined) {
+        return res.status(400).send({ error: 'Name and price parameters are required.' });
+    }
+    try {
+        let game = new Game({
+            name: req.body.name,
+            price: req.body.price
+        });
+        await game.save();
+        res.status(201).send(game);
+    } catch (error) {
+        res.status(500).send({ error: "An error occurred while creating the game." });
+    }
+});
+
+app.delete('/games/:id', async (req, res) => {
+    try {
+        const game = await Game.findByIdAndDelete(req.params.id);
+        if (!game) {
+            return res.status(404).send({ error: "Game not found" });
+        }
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).send({ error: "An error occurred while deleting the game." });
+    }
+});
 
 app.get('/accounts', async (req, res) => {
     try {
