@@ -89,7 +89,6 @@ app.post('/accounts', async (req, res) => {
 });
 
 app.post('/accounts/login', async (req, res) => {
-    // 1. Validate incoming data
     if (!req.body || !req.body.email || !req.body.password) {
         return res.status(400).send({ error: 'Email and password are required.' });
     }
