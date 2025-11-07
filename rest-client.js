@@ -58,23 +58,47 @@ app.get('/accounts/:id', async (req, res) => {
 });
 
 app.post('/accounts', async (req, res) => {
-    if (!req.body.username || !req.body.email || !req.body.password) {
-        return res.status(400).send({ error: 'One or all params are missing' });
+    if (!req.body || Object.keys(req.body).length === 0) {
+        return res.status(400).send({ error: 'Request body is missing or not JSON.' });
     }
 
-    let account = new Account({
-        username: req.body.username,
-        email: req.body.email,
-        password: req.body.password
-    });
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) {
+        return res.status(400).send({ error: 'Username, email, and password are required.' });
+    }
 
     try {
-        account = await account.save();
-        res.status(201)
-            .location(`${getBaseUrl(req)}/accounts/${account._id}`)
-            .send(account);
+        let account = new Account({
+            username: username,
+            email: email,
+            password: password
+        });
+
+        await account.save();
+
+        res.status(201).send({
+            _id: account._id,
+            username: account.username,
+            email: account.email
+        });
+
     } catch (error) {
-        res.status(400).send({ error: "An error occurred while creating the account." });
+
+        console.error("Error creating account:", error);
+
+        if (error.code === 11000) {
+            const duplicatedField = Object.keys(error.keyValue)[0];
+            return res.status(409).send({ 
+                error: `An account with that ${duplicatedField} already exists.` 
+            });
+        }
+        
+        if (error.name === 'ValidationError') {
+            return res.status(400).send({ error: error.message });
+        }
+
+        res.status(500).send({ error: "An unexpected error occurred while creating the account." });
+
     }
 });
 
