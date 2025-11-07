@@ -1,0 +1,126 @@
+openapi: 3.0.2
+info:
+  title: accounts-api
+  version: 1.0.0
+  description: A simple API to manage a list of accounts.
+paths:
+  /accounts:
+    get:
+      summary: Gets a list of accounts
+      description: Returns a list of all accounts.
+      tags:
+        - accounts
+      responses:
+        '200':
+          description: A list of accounts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+              example:
+                - id: 1
+                  username: "admin"
+                  email: "admin@example.com"
+                  password: "password123"
+                - id: 2
+                  username: "user"
+                  email: "user@example.com"
+                  password: "password456"
+    post:
+      summary: Creates a new account
+      description: Adds a new account to the list.
+      tags:
+        - accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewAccount'
+      responses:
+        '201':
+          description: The created account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          description: One or all params are missing
+  '/accounts/{id}':
+    get:
+      summary: Get full details of an account
+      description: Returns full details of a given id account.
+      tags:
+        - accounts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the account to retrieve.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Full details of a given account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '404':
+          description: Return error when no account is found.
+    delete:
+      summary: Deletes an account
+      description: Deletes an account by its ID.
+      tags:
+        - accounts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the account to delete.
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: No content
+        '404':
+          description: Account not found
+components:
+  schemas:
+    Account:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      example:
+        id: 1
+        username: "admin"
+        email: "admin@example.com"
+        password: "password123"
+    NewAccount:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      example:
+        username: "newuser"
+        email: "newuser@example.com"
+        password: "newpassword789"
