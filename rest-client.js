@@ -102,6 +102,38 @@ app.post('/accounts', async (req, res) => {
     }
 });
 
+app.post('/accounts/login', async (req, res) => {
+    if (!req.body || !req.body.email || !req.body.password) {
+        return res.status(400).send({ error: 'Email and password are required.' });
+    }
+
+    const { email, password } = req.body;
+
+    try {
+        const account = await Account.findOne({ email: email });
+
+        if (!account) {
+            return res.status(401).send({ error: 'Invalid email or password.' });
+        }
+
+        const isMatch = (password === account.password);
+
+        if (!isMatch) {
+            return res.status(401).send({ error: 'Invalid email or password.' });
+        }
+
+        res.status(200).send({
+            _id: account._id,
+            username: account.username,
+            email: account.email
+        });
+
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).send({ error: 'An internal server error occurred.' });
+    }
+});
+
 app.delete('/accounts/:id', async (req, res) => {
     try {
         const account = await Account.findByIdAndDelete(req.params.id);
